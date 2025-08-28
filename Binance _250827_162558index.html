@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <!-- PWA Manifest & Service Worker -->
+    <link rel="manifest" href="/manifest.json">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QR Code Generation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" xintegrity="sha512-CNgYg43O/16pB5k6Mv6h/495xPj6z4Wp1O+pGgL6gG7uNf16rC/1aT724QpB4V+2JmC4z/23qV9/g28uQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+            :root {
+            --binance-background: #1e2026;
+            --binance-card: #282a32;
+            --binance-text: #eaeceb;
+            --binance-primary: #f0b90b;
+            --binance-trade-green: #25a073;
+            --binance-trade-red: #da5141;
+            --binance-border: #3c3c46;
+        }
+
+        .binance-bg { background-color: var(--binance-background); }
+        .binance-card { background-color: var(--binance-card); }
+        .binance-text { color: var(--binance-text); }
+        .binance-primary { color: var(--binance-primary); }
+        .bg-binance-primary { background-color: var(--binance-primary); }
+        .bg-green-trade { background-color: var(--binance-trade-green); }
+        .bg-red-trade { background-color: var(--binance-trade-red); }
+        /* General styling */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            @apply binance-bg binance-text;
+        }
+
+        /* Modal styling */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: var(--binance-card);
+            padding: 24px;
+            border-radius: 1rem;
+            max-width: 90%;
+            width: 400px;
+            text-align: center;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            color: #888;
+            cursor: pointer;
+        }
+
+        /* Responsive and layout adjustments */
+        #mainApp {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        #pagesContainer {
+            flex-grow: 1;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .binance-header, .binance-footer {
+            background-color: var(--binance-card);
+            border-bottom: 1px solid #3c3c46;
+        }
+        
+        .binance-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+        }
+        
+        .binance-card, .binance-input {
+            border-radius: 0.5rem;
+            border: 1px solid #3c3c46;
+        }
+
+        /* Custom scrollbar for a sleek look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #272a32;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #5c5c8a;
+            border-radius: 10px;
+            border: 2px solid #272a32;
+        }
+        
+        .nav-item.active {
+            color: var(--binance-primary);
+        }
+        .text-green-trade {
+            color: var(--binance-trade-green);
+        }
+        .text-red-trade {
+            color: var(--binance-trade-red);
+        }
+        
+        .page-header {
+            background-color: var(--binance-card);
+            border-bottom: 1px solid var(--binance-border);
+        }
+        
+        /* QR Code Styling */
+        #qrcode {
+            @apply flex items-center justify-center p-4;
+            background-color: white;
+            border-radius: 1rem;
+            margin-left: auto;
+            margin-right: auto;
+            width: 200px;
+            height: 200px;
+        }
+        #qrcode img {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+    </style>
+</head>
+<body class="binance-bg binance-text">
+
+   
+    <!-- Page Containers -->
+    <div id="landingPage" class="landing-page min-h-screen">
+        <!-- Landing Page Content (CoinStats Style) -->
+        <header class="py-6 px-4 flex justify-between items-center text-white">
+            <h1 class="text-3xl font-bold">© On-Chain</h1>
+            <div class="space-x-4">
+                <button id="getAppBtn" class="bg-gray-800 text-white font-medium py-2 px-4 rounded-full border border-gray-700 hover:bg-gray-700 transition-colors">Get App</button>
+                <button id="connectWalletBtn" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-full hover:bg-blue-700 transition-colors">Connect Wallet</button>
+            </div>
+        </header>
+
+        <main>
+            <section class="py-20 px-4 text-center">
+                <h2 class="text-5xl font-extrabold text-white mb-4">Your On-Chain Crypto Terminal</h2>
+                <p class="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
+                    Track markets, manage your portfolio, and trade with real-time data powered by the CoinGecko API.
+                </p>
+                <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                    <button id="exploreMoreBtn" class="bg-blue-600 text-white font-medium py-3 px-8 rounded-full hover:bg-blue-700 transition-colors">
+                        Explore More
+                    </button>
+                    <button id="searchBtn" class="text-gray-400 font-medium py-3 px-8 rounded-full border border-gray-700 hover:bg-gray-800 transition-colors">
+                        Search
+                    </button>
+                </div>
+            </section>
+
+            <!-- Market Overview & Price List (CoinGecko API) -->
+            <section class="py-16 px-4 bg-[#1e2029] text-white">
+                <h2 class="text-3xl font-bold text-center mb-12">Market Overview & Top Coins</h2>
+                <div id="marketDataContainer" class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Data will be dynamically injected here -->
+                </div>
+                <div id="coinListContainer" class="max-w-7xl mx-auto mt-12 overflow-x-auto">
+                    <!-- Coin List will be dynamically injected here -->
+                </div>
+            </section>
+
+            <!-- How it Works Section -->
+            <section id="how-it-works" class="py-16 px-4 bg-gray-900-coinstats">
+                <h2 class="text-4xl font-bold text-center mb-12 text-blue-300">How It Works</h2>
+                <div class="max-w-5xl mx-auto space-y-12">
+                    <div class="how-it-works-item">
+                        <div class="step-number">1.</div>
+                        <div>
+                            <h3 class="text-3xl font-semibold mb-3">Connect Your Wallet</h3>
+                            <p class="text-gray-300 text-lg">Securely link your existing crypto wallet using WalletConnect or a browser extension like MetaMask. We support various networks.</p>
+                        </div>
+                    </div>
+                    <div class="how-it-works-item">
+                        <div class="step-number">2.</div>
+                        <div>
+                            <h3 class="text-3xl font-semibold mb-3">Explore Markets</h3>
+                            <p class="text-gray-300 text-lg">Dive into our comprehensive market overview with real-time price updates and interactive charts for your favorite cryptocurrencies.</p>
+                        </div>
+                    </div>
+                    <div class="how-it-works-item">
+                        <div class="step-number">3.</div>
+                        <div>
+                            <h3 class="text-3xl font-semibold mb-3">Trade & Manage</h3>
+                            <p class="text-gray-300 text-lg">Effortlessly execute buy and sell orders, track your portfolio performance, and view your transaction history all in one place.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Call to Action Section -->
+            <section class="py-16 px-4 bg-gray-950-coinstats text-center">
+                <h2 class="text-4xl font-bold text-blue-300 mb-6">Ready to Get Started?</h2>
+                <p class="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
+                    Join thousands of users who trust OnChain for their crypto trading and portfolio management needs.
+                </p>
+                <button id="cta-connect-wallet-btn" class="landing-cta btn-primary">
+                    Connect Wallet & Start Trading
+                </button>
+            </section>
+
+            <!-- FAQ Section -->
+            <section id="faq" class="py-16 px-4 bg-gray-900-coinstats">
+                <h2 class="text-4xl font-bold text-center mb-12 text-blue-300">Frequently Asked Questions</h2>
+                <div class="max-w-4xl mx-auto space-y-6">
+                    <!-- FAQ Item 1 -->
+                    <div class="faq-item">
+                        <details>
+                            <summary>
+                                What is OnChain?
+                            </summary>
+                            <p class="text-gray-300 mt-3">
+                                OnChain is a sophisticated crypto terminal that allows you to track market data, connect your wallet, and simulate crypto trades in real-time.
+                            </p>
+                        </details>
+                    </div>
+                    <!-- FAQ Item 2 -->
+                    <div class="faq-item">
+                        <details>
+                            <summary>
+                                Is my wallet secure?
+                            </summary>
+                            <p class="text-gray-300 mt-3">
+                                Yes, we use industry-standard secure connection methods like WalletConnect and MetaMask. Your private keys never leave your wallet.
+                            </p>
+                        </details>
+                    </div>
+                    <!-- FAQ Item 3 -->
+                    <details>
+                        <summary>
+                            Do you support real trading?
+                        </summary>
+                        <p class="text-gray-300 mt-3">
+                            Currently, OnChain provides a simulation environment for trading. It's perfect for practicing strategies without real financial risk.
+                        </p>
+                    </details>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-950-coinstats py-10 px-4 text-center text-gray-400 text-sm">
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                <p>Blockchain verified</p>
+                <div class="flex space-x-6">
+                    <a href="#" class="hover:text-white transition-colors duration-200">Privacy Policy</a>
+                    <a href="#" class="hover:text-white transition-colors duration-200">Terms of Service</a>
+                    <a href="#" class="hover:text-white transition-colors duration-200">Support</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="mainApp" class="hidden">
+        <!-- Content will be dynamically injected here -->
+    </div>
+
+    <!-- Wallet Connection Modal -->
+    <div id="walletConnectModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close cursor-pointer text-gray-500 hover:text-white">&times;</span>
+            <h2 class="text-2xl font-bold mb-6">Connect Your Wallet</h2>
+            <div class="space-y-4">
+                <button id="metamaskConnectBtn" class="w-full py-3 px-6 rounded-lg flex items-center justify-center space-x-3 binance-card hover:bg-gray-700 transition-colors">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/MetaMask_Fox.svg/1024px-MetaMask_Fox.svg.png" alt="MetaMask" class="w-8 h-8">
+                    <span>MetaMask</span>
+                </button>
+                <button id="walletConnectBtn" class="w-full py-3 px-6 rounded-lg flex items-center justify-center space-x-3 binance-card hover:bg-gray-700 transition-colors">
+                    <img src="https://seeklogo.com/images/W/walletconnect-logo-30541797C7-seeklogo.com.png" alt="WalletConnect" class="w-8 h-8">
+                    <span>WalletConnect</span>
+                </button>
+                <button id="manualConnectBtn" class="w-full py-3 px-6 rounded-lg flex items-center justify-center space-x-3 binance-card hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-keyboard text-xl"></i>
+                    <span>Manual Connect</span>
+                </button>
+            </div>
+            <p class="text-gray-500 text-sm mt-4">New to crypto wallets? <a href="#" class="text-binance-primary">Learn more</a></p>
+        </div>
+    </div>
+
+    <!-- Manual Connect Modal -->
+    <div id="manualConnectModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close cursor-pointer text-gray-500 hover:text-white">&times;</span>
+            <h2 class="text-2xl font-bold mb-4">Manual Wallet Connection</h2>
+            <p class="text-gray-400 mb-4">Enter your wallet address to proceed.</p>
+            <input type="text" id="walletAddressInput" placeholder="0x..." class="w-full p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none mb-4">
+            <button id="manualConnectSubmitBtn" class="w-full py-3 rounded-lg bg-binance-primary text-black font-bold">Connect</button>
+        </div>
+    </div>
+
+    <!-- Message Modal -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close cursor-pointer text-gray-500 hover:text-white">&times;</span>
+            <div id="messageText" class="text-lg font-semibold text-white"></div>
+            <button id="messageModalCloseBtn" class="mt-4 px-6 py-2 rounded-lg bg-binance-primary text-black font-bold">Close</button>
+        </div>
+    </div>
+    <script>
+        // Global state
+        let isWalletConnected = false;
+        let currentWalletAddress = '';
+        let pageHistory = [];
+        let currentPageId = 'homePage';
+        let deferredPrompt; // install prompt holder
+
+        // PWA Setup
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js').then(registration => {
+                    console.log('Service Worker registered: ', registration);
+                }).catch(registrationError => {
+                    console.log('Service Worker registration failed: ', registrationError);
+                });
+            });
+        }
+        
+        // Define the PWA manifest and service worker content
+        const manifestContent = `
+        {
+          "name": "On-Chain",
+          "short_name": "On-Chain",
+          "description": "Your on-chain crypto terminal and portfolio manager.",
+          "start_url": "/index.html",
+          "display": "standalone",
+          "background_color": "#ffffff",
+          "theme_color": "#6c63ff",
+          "icons": [
+            {
+              "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='70' font-family='Arial' fill='%236c63ff'>©</text></svg>",
+              "sizes": "192x192",
+              "type": "image/svg+xml"
+            },
+            {
+              "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='120' font-family='Arial' fill='%236c63ff'>©</text></svg>",
+              "sizes": "512x512",
+              "type": "image/svg+xml"
+            }
+          ]
+        }
+        `;
+        
+        const serviceWorkerContent = `
+        const CACHE_NAME = 'onchain-cache-v1';
+        const urlsToCache = [
+            '/',
+            '/index.html',
+            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css',
+            'https://cdn.tailwindcss.com',
+            'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'
+        ];
+        self.addEventListener('install', event => {
+            event.waitUntil(
+                caches.open(CACHE_NAME).then(cache => {
+                    return cache.addAll(urlsToCache);
+                })
+            );
+        });
+        self.addEventListener('fetch', event => {
+            event.respondWith(
+                caches.match(event.request).then(response => {
+                    return response || fetch(event.request);
+                })
+            );
+        });
+        `;
+
+        // Create virtual PWA files (in a real scenario, these would be separate files)
+        const createPwaFiles = () => {
+            const manifestBlob = new Blob([manifestContent], { type: 'application/json' });
+            const manifestUrl = URL.createObjectURL(manifestBlob);
+            document.querySelector('link[rel="manifest"]').href = manifestUrl;
+
+            const serviceWorkerBlob = new Blob([serviceWorkerContent], { type: 'application/javascript' });
+            const serviceWorkerUrl = URL.createObjectURL(serviceWorkerBlob);
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register(serviceWorkerUrl).then(registration => {
+                    console.log('Virtual Service Worker registered: ', registration);
+                }).catch(registrationError => {
+                    console.log('Virtual Service Worker registration failed: ', registrationError);
+                });
+            }
+        };
+
+        // Handle install prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log("Install prompt captured and saved.");
+        });
+
+        // Show Install button after clicking Get App
+        function showInstallButton() {
+            if (deferredPrompt) {
+                const installBtn = document.getElementById('installBtn');
+                if (installBtn) {
+                    installBtn.style.display = 'block';
+                    installBtn.addEventListener('click', async () => {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        console.log('User response to install:', outcome);
+                        deferredPrompt = null;
+                        installBtn.style.display = 'none';
+                    });
+                }
+            } else {
+                alert("App installation not available right now.");
+            }
+        }
+
+        createPwaFiles();
+
+        // DEPOSIT Addresses
+        const DEPOSIT = { 
+            ETH: "0xAB98294614C46008cBF82Fa3e25285FBC2A6F257", 
+            BSC: "0xAB98294614C46008cBF82Fa3e25285FBC2A6F257", 
+            POLYGON: "0xAB98294614C46008cBF82Fa3e25285FBC2A6F257", 
+            ARBITRUM: "0xAB98294614C46008cBF82Fa3e25285FBC2A6F257", 
+            OPTIMISM: "0xAB98294614C46008cBF82Fa3e25285FBC2A6F257", 
+            AVAX: "0xAB98294614C46008cBF82Fa3e25285FBC2A6F257", 
+            SOL: "GwobMFEUFxPH3kfpHjbyCsKcVaPV4ptAePEPdnpHdmn5", 
+            BTC: "bc1q9ldrkd44xk9xlg3qgefx5avhl7hwlfaqaktsmx" 
+        };
+
+        const DEPOSIT_NETWORKS = {
+            ETH: ['ETH', 'BSC', 'POLYGON', 'ARBITRUM', 'OPTIMISM'],
+            BTC: ['BTC'],
+            SOL: ['SOL'],
+            USDT: ['ETH', 'BSC', 'TRC20', 'SOL', 'POLYGON', 'AVAX']
+        }
+        
+        // DOM elements
+        const landingPage = document.getElementById('landingPage');
+        const mainApp = document.getElementById('mainApp');
+        const connectWalletBtn = document.getElementById('connectWalletBtn');
+        const walletConnectModal = document.getElementById('walletConnectModal');
+        const manualConnectModal = document.getElementById('manualConnectModal');
+        const messageModal = document.getElementById('messageModal');
+        const messageTextEl = document.getElementById('messageText');
+        const ctaConnectWalletBtn = document.getElementById('ctaConnectWalletBtn');
+
+        // Buttons within modals
+        const manualConnectBtn = document.getElementById('manualConnectBtn');
+        const manualConnectSubmitBtn = document.getElementById('manualConnectSubmitBtn');
+        const metamaskConnectBtn = document.getElementById('metamaskConnectBtn');
+        const walletConnectBtn = document.getElementById('walletConnectBtn');
+        const searchLandingBtn = document.getElementById('searchLandingBtn');
+        const exploreMoreBtn = document.getElementById('exploreMoreBtn');
+        
+        // Configuration
+        const CONFIG = {
+            COINGECKO_BASE: "https://api.coingecko.com/api/v3", 
+            FORM_SPREE_ENDPOINT: "https://formspree.io/f/mldlqyag"
+        };
+        
+        let allCoins = [];
+
+        /* ============================
+               MODAL HANDLERS
+            ============================ */
+        const showModal = (modalElement) => {
+            modalElement.style.display = 'flex';
+        };
+
+        const hideAllModals = () => {
+            document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
+        };
+
+        const showMessage = (message) => {
+            messageTextEl.textContent = message;
+            showModal(messageModal);
+        };
+        
+        /* ============================
+               NAVIGATION LOGIC
+            ============================ */
+        const showPage = (pageId, pushHistory = true) => {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.add('hidden');
+                page.classList.remove('active');
+            });
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.remove('hidden');
+                targetPage.classList.add('active');
+                
+                // Add page to history, unless it's a back navigation
+                if (pushHistory && currentPageId !== pageId) {
+                    pageHistory.push(currentPageId);
+                    currentPageId = pageId;
+                }
+                
+                // Show/hide back button
+                const backButton = document.getElementById('backBtn');
+                if (backButton) {
+                    if (pageId === 'homePage' || pageId === 'landingPage') {
+                        backButton.classList.add('hidden');
+                    } else {
+                        backButton.classList.remove('hidden');
+                    }
+                }
+
+                // Trigger content loading for specific pages
+                if (pageId === 'marketsPage') {
+                    fetchAndRenderMarketsPage();
+                } else if (pageId === 'homePage') {
+                    fetchAndRenderMainAppHome();
+                } else if (pageId === 'assetsPage') {
+                     fetchAndRenderPortfolio();
+                } else if (pageId === 'depositPage') {
+                     renderDepositPage();
+                } else if (pageId === 'sendPage') {
+                    renderSendPage();
+                } else if (pageId === 'explorePage') {
+                    renderExplorePage();
+                }
+            }
+        };
+
+        const goBack = () => {
+            if (pageHistory.length > 0) {
+                const prevPageId = pageHistory.pop();
+                currentPageId = prevPageId;
+                showPage(prevPageId, false);
+            } else {
+                // If no history, go to homepage or landing page
+                if (isWalletConnected) {
+                    showPage('homePage', false);
+                } else {
+                    showPage('landingPage', false);
+                }
+            }
+        };
+
+        const setupEventListeners = () => {
+            // Header button event listeners
+            document.getElementById('searchAppBtn')?.addEventListener('click', () => {
+                showMessage("Search functionality is not yet implemented.");
+            });
+            document.getElementById('notificationsBtn')?.addEventListener('click', () => {
+                showPage('notificationsPage');
+            });
+            document.getElementById('settingsBtn')?.addEventListener('click', () => {
+                showPage('settingsPage');
+            });
+            document.getElementById('backBtn')?.addEventListener('click', goBack);
+        };
+        
+        /* ============================
+               WALLET CONNECTION LOGIC
+            ============================ */
+            connectWalletBtn.addEventListener('click', () => {
+                showModal(walletConnectModal);
+            });
+            
+            if (ctaConnectWalletBtn) {
+                ctaConnectWalletBtn.addEventListener('click', () => {
+                    showModal(walletConnectModal);
+                });
+            }
+
+            manualConnectBtn.addEventListener('click', () => {
+                hideAllModals();
+                showModal(manualConnectModal);
+            });
+
+            manualConnectSubmitBtn.addEventListener('click', async () => {
+                const walletAddress = document.getElementById('walletAddressInput').value;
+                if (walletAddress) {
+                    await simulateWalletConnect(walletAddress);
+                } else {
+                    showMessage("Please enter a wallet address.");
+                }
+            });
+
+            metamaskConnectBtn.addEventListener('click', async () => {
+                if (typeof window.ethereum !== 'undefined') {
+                    try {
+                        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                        if (accounts.length > 0) {
+                            await simulateWalletConnect(accounts[0]);
+                        } else {
+                            showMessage("No accounts found.");
+                        }
+                    } catch (error) {
+                        console.error("MetaMask connection failed:", error);
+                        showMessage("MetaMask connection failed: " + error.message);
+                    }
+                } else {
+                    showMessage("MetaMask is not installed.");
+                    // In a real app, you would prompt the user to install it
+                }
+            });
+
+            walletConnectBtn.addEventListener('click', async () => {
+                // Simulating WalletConnect logic
+                console.log("Simulating WalletConnect...");
+                await simulateWalletConnect("0xSimulatedWalletConnectAddress");
+            });
+
+            const simulateWalletConnect = (address) => {
+                hideAllModals();
+                landingPage.classList.add('hidden');
+                mainApp.classList.remove('hidden');
+                isWalletConnected = true;
+                currentWalletAddress = address;
+                
+                // Show a loading message while content is being injected
+                const loadingMessage = `<p class="text-center text-xl text-white">Connecting wallet...</p>`;
+                mainApp.innerHTML = loadingMessage;
+                
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        // Dynamically inject the main app's HTML content
+                        mainApp.innerHTML = `
+                            <!-- Main App Header -->
+                            <header class="binance-header p-4 flex items-center justify-between sticky top-0 z-10">
+                                <div class="flex items-center space-x-4">
+                                    <button id="backBtn" class="text-white text-lg hidden"><i class="fas fa-arrow-left"></i></button>
+                                    <span class="text-white font-semibold">Wallet</span>
+                                </div>
+                                <div class="flex items-center space-x-4 text-2xl">
+                                    <button id="searchAppBtn" class="text-white"><i class="fas fa-search"></i></button>
+                                    <button id="notificationsBtn" class="text-white"><i class="fas fa-bell"></i></button>
+                                    <button id="settingsBtn" class="text-white"><i class="fas fa-cog"></i></button>
+                                    <span id="walletAddressDisplay" class="text-xs font-mono text-gray-400 cursor-pointer"></span>
+                                </div>
+                            </header>
+
+                            <!-- Main App Pages -->
+                            <div id="pagesContainer" class="flex-grow overflow-y-auto p-4 pb-16">
+                                <!-- Homepage -->
+                                <div id="homePage" class="page active">
+                                    <h2 class="text-3xl font-bold mb-4">Welcome</h2>
+                                    <div class="binance-card rounded-lg p-4 flex justify-between items-center mb-6">
+                                        <div>
+                                            <p class="text-sm text-gray-400">Total Balance</p>
+                                            <p id="totalBalance" class="text-2xl font-bold mt-1">$...</p>
+                                        </div>
+                                        <div class="space-x-2">
+                                            <button id="homeDepositBtn" class="px-4 py-2 bg-green-trade text-white rounded-lg">Deposit</button>
+                                            <button id="homeWithdrawBtn" class="px-4 py-2 bg-red-trade text-white rounded-lg">Withdraw</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Quick Action Buttons -->
+                                    <div class="grid grid-cols-4 gap-4 text-center mb-6">
+                                        <button id="sendBtn" class="flex flex-col items-center">
+                                            <div class="bg-gray-700 w-12 h-12 rounded-full flex items-center justify-center mb-1">
+                                                <i class="fas fa-arrow-up text-white"></i>
+                                            </div>
+                                            <span class="text-xs text-gray-400">Send</span>
+                                        </button>
+                                        <button id="receiveBtn" class="flex flex-col items-center">
+                                            <div class="bg-gray-700 w-12 h-12 rounded-full flex items-center justify-center mb-1">
+                                                <i class="fas fa-arrow-down text-white"></i>
+                                            </div>
+                                            <span class="text-xs text-gray-400">Receive</span>
+                                        </button>
+                                        <button id="buyCryptoBtn" class="flex flex-col items-center">
+                                            <div class="bg-gray-700 w-12 h-12 rounded-full flex items-center justify-center mb-1">
+                                                <i class="fas fa-credit-card text-white"></i>
+                                            </div>
+                                            <span class="text-xs text-gray-400">Buy Crypto</span>
+                                        </button>
+                                        <button id="referralBtn" class="flex flex-col items-center">
+                                            <div class="bg-gray-700 w-12 h-12 rounded-full flex items-center justify-center mb-1">
+                                                <i class="fas fa-user-plus text-white"></i>
+                                            </div>
+                                            <span class="text-xs text-gray-400">Referral</span>
+                                        </button>
+                                        <button id="savingsBtn" class="flex flex-col items-center">
+                                            <div class="bg-gray-700 w-12 h-12 rounded-full flex items-center justify-center mb-1">
+                                                <i class="fas fa-piggy-bank text-white"></i>
+                                            </div>
+                                            <span class="text-xs text-gray-400">Savings</span>
+                                        </button>
+                                        <button id="stakingBtn" class="flex flex-col items-center">
+                                            <div class="bg-gray-700 w-12 h-12 rounded-full flex items-center justify-center mb-1">
+                                                <i class="fas fa-cubes text-white"></i>
+                                            </div>
+                                            <span class="text-xs text-gray-400">Staking</span>
+                                        </button>
+                                        <button id="launchpadBtn" class="flex flex-col items-center">
+                                            <div class="bg-gray-700 w-12 h-12 rounded-full flex items-center justify-center mb-1">
+                                                <i class="fas fa-rocket text-white"></i>
+                                            </div>
+                                            <span class="text-xs text-gray-400">Launchpad</span>
+                                        </button>
+                                        <button id="moreBtn" class="flex flex-col items-center">
+                                            <div class="bg-gray-700 w-12 h-12 rounded-full flex items-center justify-center mb-1">
+                                                <i class="fas fa-ellipsis-h text-white"></i>
+                                            </div>
+                                            <span class="text-xs text-gray-400">More</span>
+                                        </button>
+                                    </div>
+
+                                    <h3 class="text-xl font-bold mt-8 mb-4">Market Trends</h3>
+                                    <div id="topCoinsTable" class="binance-card rounded-lg overflow-x-auto">
+                                        <!-- Coin table will be injected here -->
+                                    </div>
+                                </div>
+                                
+                                <!-- Markets Page -->
+                                <div id="marketsPage" class="page hidden">
+                                    <header class="flex items-center space-x-4 mb-4 page-header -mx-4 px-4 py-2">
+                                        <h2 class="text-2xl font-bold">Markets</h2>
+                                    </header>
+                                    <div class="flex items-center space-x-2 mb-4">
+                                        <div class="relative w-full">
+                                            <input id="marketSearch" type="text" placeholder="Search Markets" class="w-full p-2 pl-10 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none">
+                                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                        </div>
+                                        <button class="text-white text-lg"><i class="fas fa-ellipsis-v"></i></button>
+                                    </div>
+
+                                    <div id="marketNews" class="mb-6">
+                                        <h3 class="text-xl font-bold mb-3">Latest News</h3>
+                                        <div id="newsContainer" class="space-y-4">
+                                            <!-- News articles will be injected here -->
+                                        </div>
+                                    </div>
+
+                                    <div id="topGainersLosers" class="mb-6">
+                                        <h3 class="text-xl font-bold mb-3">Top Gainers & Losers</h3>
+                                        <div class="flex space-x-4 mb-4">
+                                            <button id="showGainers" class="px-4 py-2 rounded-full bg-green-trade text-white font-semibold">Top Gainers</button>
+                                            <button id="showLosers" class="px-4 py-2 rounded-full bg-gray-600 text-gray-200 font-semibold">Top Losers</button>
+                                        </div>
+                                        <div id="gainersLosersList" class="binance-card rounded-lg overflow-hidden">
+                                            <!-- List will be injected here -->
+                                        </div>
+                                    </div>
+
+                                    <div id="marketCharts">
+                                        <h3 class="text-xl font-bold mb-3">Performance Charts</h3>
+                                        <div class="binance-card rounded-lg p-2">
+                                            <iframe src="https://tradingview.com/widget/market-overview/" style="width:100%; height:400px; border:none;"></iframe>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Trade Page -->
+                                <div id="tradePage" class="page hidden">
+                                    <h2 class="text-3xl font-bold mb-6">Trade</h2>
+                                    <p class="text-gray-400 mb-4">Real-time TradingView chart (simulated).</p>
+                                    <div class="binance-card rounded-lg p-2">
+                                        <iframe src="https://tradingview.com/widget/market-overview/" style="width:100%; height:400px; border:none;"></iframe>
+                                    </div>
+                                    <div id="tradeControls" class="mt-6 flex justify-around">
+                                        <button class="px-6 py-2 rounded-lg bg-green-trade font-semibold">Buy</button>
+                                        <button class="px-6 py-2 rounded-lg bg-red-trade font-semibold">Sell</button>
+                                    </div>
+                                </div>
+
+                                <!-- Futures Page -->
+                                <div id="futuresPage" class="page hidden">
+                                    <h2 class="text-3xl font-bold mb-6">Futures</h2>
+                                    <p class="text-gray-400">Futures trading page. Currently under construction.</p>
+                                </div>
+
+                                <!-- Assets Page -->
+                                <div id="assetsPage" class="page hidden">
+                                    <h2 class="text-3xl font-bold mb-6">Assets</h2>
+                                    <div class="binance-card rounded-lg p-4 flex justify-between items-center">
+                                        <div>
+                                            <p class="text-sm text-gray-400">Total Balance</p>
+                                            <p id="totalBalanceAssets" class="text-2xl font-bold mt-1">$...</p>
+                                        </div>
+                                        <div class="space-x-2">
+                                            <button id="assetsDepositBtn" class="px-4 py-2 bg-green-trade text-white rounded-lg">Deposit</button>
+                                            <button id="assetsWithdrawBtn" class="px-4 py-2 bg-red-trade text-white rounded-lg">Withdraw</button>
+                                        </div>
+                                    </div>
+                                    <div id="assetList" class="mt-6">
+                                        <h3 class="text-xl font-bold mb-4">My Assets</h3>
+                                        <div id="portfolioList" class="space-y-2">
+                                            <!-- Portfolio assets will be injected here -->
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Deposit Page -->
+                                <div id="depositPage" class="page hidden">
+                                    <header class="flex items-center justify-between mb-4 page-header -mx-4 px-4 py-2">
+                                        <h2 class="text-2xl font-bold">Deposit Crypto</h2>
+                                    </header>
+                                    <div class="relative w-full mb-4">
+                                        <input id="depositSearch" type="text" placeholder="Search coin" class="w-full p-2 pl-10 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none">
+                                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                    </div>
+                                    <div id="depositCoinList" class="space-y-2">
+                                        <!-- Coin list will be dynamically injected here -->
+                                    </div>
+                                </div>
+                                
+                                <!-- Deposit Address Page -->
+                                <div id="depositAddressPage" class="page hidden">
+                                    <header class="flex items-center justify-between mb-4 page-header -mx-4 px-4 py-2">
+                                        <h2 class="text-2xl font-bold">Deposit <span id="depositCoinTitle"></span></h2>
+                                    </header>
+                                    <div class="binance-card rounded-lg p-4 text-center">
+                                        <p class="text-sm text-gray-400 mb-2">Selected Network:</p>
+                                        <p id="depositNetworkDisplay" class="font-bold text-xl mb-6"></p>
+
+                                        <p class="text-sm text-gray-400 mb-2">Scan QR Code</p>
+                                        <div id="qrcode" class="mx-auto mb-6"></div>
+
+                                        <p class="text-sm text-gray-400 mb-2">Deposit Address</p>
+                                        <div class="relative binance-card rounded-lg p-3 overflow-hidden text-sm mb-4">
+                                            <span id="depositAddress" class="text-white break-all"></span>
+                                        </div>
+                                        <button id="copyAddressBtn" class="w-full py-3 rounded-lg bg-binance-primary text-black font-bold flex items-center justify-center space-x-2">
+                                            <i class="fas fa-copy"></i>
+                                            <span>Copy Address</span>
+                                        </button>
+                                    </div>
+                                    <p class="text-sm text-gray-500 mt-4 text-center">
+                                        Only send <span id="disclaimerCoin"></span> to this address. Sending other coins may result in loss of funds.
+                                    </p>
+                                </div>
+                                
+                                <!-- Send Page -->
+                                <div id="sendPage" class="page hidden">
+                                    <header class="flex items-center justify-between mb-4 page-header -mx-4 px-4 py-2">
+                                        <h2 class="text-2xl font-bold">Send Crypto</h2>
+                                    </header>
+                                    <div class="binance-card rounded-lg p-4">
+                                        <h3 class="font-bold text-xl mb-4">Send to a Friend</h3>
+                                        <p class="text-sm text-gray-400 mb-2">This is a simulated page for sending assets.</p>
+                                        <div class="mb-4">
+                                            <label for="recipientAddress" class="block text-sm text-gray-400 mb-1">Recipient Address</label>
+                                            <input type="text" id="recipientAddress" placeholder="Enter recipient address" class="w-full p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none">
+                                        </div>
+                                        <div class="mb-4">
+                                            <label for="sendAmount" class="block text-sm text-gray-400 mb-1">Amount</label>
+                                            <input type="number" id="sendAmount" placeholder="0.0" class="w-full p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none">
+                                        </div>
+                                        <button class="w-full py-3 rounded-lg bg-binance-primary text-black font-bold">Send</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Explore Page -->
+                                <div id="explorePage" class="page hidden">
+                                    <header class="flex items-center justify-between mb-4 page-header -mx-4 px-4 py-2">
+                                        <h2 class="text-2xl font-bold">Explore</h2>
+                                    </header>
+                                    <div class="binance-card rounded-lg p-4">
+                                        <h3 class="font-bold text-xl mb-4">Top Cryptocurrencies</h3>
+                                        <p class="text-sm text-gray-400 mb-4">
+                                            Data sourced from the CoinGecko API. For full details and a live experience, visit the official site.
+                                        </p>
+                                        <div id="exploreCoinList" class="space-y-4">
+                                            <!-- Top coins will be injected here -->
+                                        </div>
+                                        <div class="mt-6 text-center">
+                                            <a href="https://coinstats.app/" target="_blank" class="px-6 py-3 rounded-full bg-binance-primary text-black font-semibold">
+                                                Go to CoinStats.app
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Other Pages (unchanged from previous) -->
+                                <div id="supportPage" class="page hidden">
+                                    <h2 class="text-3xl font-bold mb-6">Support</h2>
+                                    <div class="binance-card rounded-lg p-4 mb-4">
+                                        <h3 class="font-bold text-xl mb-2">FAQ</h3>
+                                        <div class="space-y-4">
+                                            <div>
+                                                <p class="font-semibold">How do I reset my password?</p>
+                                                <p class="text-gray-400 text-sm mt-1">Simulated answer: You can reset your password through the link on the login page.</p>
+                                            </div>
+                                            <div>
+                                                <p class="font-semibold">How do I contact support?</p>
+                                                <p class="text-gray-400 text-sm mt-1">Fill out the form below to get in touch with our support team.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="binance-card rounded-lg p-4">
+                                        <h3 class="font-bold text-xl mb-2">Contact Support</h3>
+                                        <form id="contactForm" action="https://formspree.io/f/mldlqyag" method="POST">
+                                            <input type="text" name="name" placeholder="Your Name" class="w-full p-2 rounded bg-gray-700 border-none text-white focus:outline-none mb-3">
+                                            <input type="email" name="email" placeholder="Your Email" class="w-full p-2 rounded bg-gray-700 border-none text-white focus:outline-none mb-3">
+                                            <textarea name="message" placeholder="Your Message" rows="4" class="w-full p-2 rounded bg-gray-700 border-none text-white focus:outline-none mb-3"></textarea>
+                                            <button type="submit" class="w-full px-4 py-2 bg-binance-primary text-black rounded-lg font-semibold">Send Message</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div id="notificationsPage" class="page hidden">
+                                    <h2 class="text-3xl font-bold mb-6">Notifications</h2>
+                                    <div id="notificationsList" class="binance-card rounded-lg p-4">
+                                        <p class="text-gray-400">No new notifications.</p>
+                                    </div>
+                                </div>
+                                <div id="settingsPage" class="page hidden">
+                                    <h2 class="text-3xl font-bold mb-6">Settings</h2>
+                                    <div class="binance-card rounded-lg p-4">
+                                        <p class="font-semibold">Language</p>
+                                        <p class="text-sm text-gray-400">English</p>
+                                    </div>
+                                    <div class="binance-card rounded-lg p-4 mt-2">
+                                        <p class="font-semibold">Theme</p>
+                                        <p class="text-sm text-gray-400">Dark Mode</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Main App Footer Navigation -->
+                            <footer class="binance-footer flex justify-around items-center p-3 sticky bottom-0">
+                                <button id="navHome" class="nav-item active flex flex-col items-center">
+                                    <i class="fas fa-home text-xl"></i>
+                                    <span class="text-xs mt-1">Home</span>
+                                </button>
+                                <button id="navMarkets" class="nav-item flex flex-col items-center">
+                                    <i class="fas fa-chart-line text-xl"></i>
+                                    <span class="text-xs mt-1">Markets</span>
+                                </button>
+                                <button id="navTrade" class="nav-item flex flex-col items-center">
+                                    <i class="fas fa-exchange-alt text-xl"></i>
+                                    <span class="text-xs mt-1">Trade</span>
+                                </button>
+                                <button id="navFutures" class="nav-item flex flex-col items-center">
+                                    <i class="fas fa-fire text-xl"></i>
+                                    <span class="text-xs mt-1">Futures</span>
+                                </button>
+                                <button id="navAssets" class="nav-item flex flex-col items-center">
+                                    <i class="fas fa-wallet text-xl"></i>
+                                    <span class="text-xs mt-1">Assets</span>
+                                </button>
+                            </footer>
+                        `;
+                        // After HTML is injected, set up all the event listeners
+                        setupMainAppEventListeners();
+                        updateUIForConnection(address);
+                        showPage('homePage');
+                        resolve();
+                    }, 1000); // 1-second loading simulation
+                });
+            };
+
+            const updateUIForConnection = (address) => {
+                const walletAddressDisplay = document.getElementById('walletAddressDisplay');
+                const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+                if (walletAddressDisplay) {
+                    walletAddressDisplay.innerText = shortAddress;
+                    walletAddressDisplay.title = address;
+                    walletAddressDisplay.addEventListener('click', () => {
+                        // Navigate to Wallet Details Page (simulated)
+                        console.log(`Wallet Details Page for ${address}`);
+                    });
+                }
+            };
+            
+            const fetchAndRenderMainAppHome = async () => {
+                const totalBalanceEl = document.getElementById('totalBalance');
+                const topCoinsTable = document.getElementById('topCoinsTable');
+                
+                if (!totalBalanceEl || !topCoinsTable) {
+                    console.error("Home page elements not found.");
+                    return;
+                }
+
+                totalBalanceEl.innerText = '$...';
+                topCoinsTable.innerHTML = `<p class="text-center text-gray-400 py-4">Loading market data...</p>`;
+
+                try {
+                    // Fetch top 100 coins to get overall market cap
+                    const marketResponse = await fetch(`${CONFIG.COINGECKO_BASE}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&price_change_percentage=24h`);
+                    if (!marketResponse.ok) throw new Error('Failed to fetch market data');
+                    const marketData = await marketResponse.json();
+
+                    // Calculate total market cap from the fetched data
+                    const totalMarketCap = marketData.reduce((sum, coin) => sum + coin.market_cap, 0);
+                    
+                    // Display a mock total balance based on the market cap
+                    totalBalanceEl.innerText = `$${(totalMarketCap / 10000000000).toFixed(2)}B`;
+
+                    // Sort coins by market cap to display as top trends
+                    const topCoins = marketData.slice(0, 10);
+
+                    let tableHtml = `
+                        <div class="p-4">
+                            <div class="flex font-semibold text-gray-400 pb-2 border-b border-binance-border text-sm">
+                                <span class="w-1/2">Coin</span>
+                                <span class="w-1/4 text-right">Price</span>
+                                <span class="w-1/4 text-right">24h Change</span>
+                            </div>
+                    `;
+                    
+                    if (topCoins && Array.isArray(topCoins) && topCoins.length > 0) {
+                        topCoins.forEach((coin) => {
+                            const priceChangeClass = coin.price_change_percentage_24h_in_currency > 0 ? 'text-green-trade' : 'text-red-trade';
+                            const priceChangeArrow = coin.price_change_percentage_24h_in_currency > 0 ? '▲' : '▼';
+                            const priceChangeValue = coin.price_change_percentage_24h_in_currency !== null ? Math.abs(coin.price_change_percentage_24h_in_currency).toFixed(2) + '%' : 'N/A';
+                            
+                            tableHtml += `
+                                <div class="flex items-center py-4 border-b border-binance-border last:border-b-0 text-sm">
+                                    <div class="w-1/2 flex items-center">
+                                        <img src="${coin.image}" onerror="this.onerror=null;this.src='https://placehold.co/60x60/282a32/eaeceb?text=${coin.symbol.toUpperCase()}'" alt="${coin.name}" class="w-6 h-6 mr-2 rounded-full">
+                                        <div>
+                                            <p class="font-semibold">${coin.symbol.toUpperCase()}</p>
+                                            <p class="text-xs text-gray-400">${coin.name}</p>
+                                        </div>
+                                    </div>
+                                    <div class="w-1/4 text-right">
+                                        <p>$${coin.current_price.toFixed(2)}</p>
+                                    </div>
+                                    <div class="w-1/4 text-right ${priceChangeClass} flex items-center justify-end">
+                                        <span>${priceChangeArrow} ${priceChangeValue}</span>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        tableHtml += `<p class="text-center text-gray-400 py-4">No trending coins data available.</p>`;
+                    }
+
+                    tableHtml += `</div>`;
+                    
+                    if(topCoinsTable) {
+                        topCoinsTable.innerHTML = tableHtml;
+                    }
+
+                } catch (error) {
+                    console.error("Failed to fetch top coins for main app homepage:", error);
+                    if (topCoinsTable) {
+                        topCoinsTable.innerHTML = `<p class="text-center text-red-500 py-4">Failed to load market data. Please try again later.</p>`;
+                    }
+                    if(totalBalanceEl) {
+                         totalBalanceEl.innerText = '$Error';
+                    }
+                }
+            }
+            
+            const fetchAndRenderMarketsPage = async () => {
+                const newsContainer = document.getElementById('newsContainer');
+                const gainersLosersList = document.getElementById('gainersLosersList');
+                const marketSearch = document.getElementById('marketSearch');
+                const showGainersBtn = document.getElementById('showGainers');
+                const showLosersBtn = document.getElementById('showLosers');
+
+                if (!newsContainer || !gainersLosersList) {
+                    console.error("Markets page elements not found.");
+                    return;
+                }
+
+                // Function to fetch and render news
+                const fetchAndRenderNews = async () => {
+                    newsContainer.innerHTML = `<p class="text-center text-gray-400">Loading news...</p>`;
+                    try {
+                        const newsResponse = await fetch(`${CONFIG.COINGECKO_BASE}/search/trending`);
+                        if (!newsResponse.ok) throw new Error('Failed to fetch trending coins');
+                        const newsData = await newsResponse.json();
+                        
+                        let newsHtml = '';
+                        if (newsData.coins && newsData.coins.length > 0) {
+                            newsData.coins.forEach(item => {
+                                const coin = item.item;
+                                newsHtml += `
+                                    <div class="binance-card rounded-lg p-3 flex items-center space-x-3">
+                                        <img src="${coin.large}" onerror="this.onerror=null;this.src='https://placehold.co/60x60/282a32/eaeceb?text=${coin.symbol.toUpperCase()}'" alt="${coin.name}" class="w-8 h-8 rounded-full">
+                                        <div>
+                                            <p class="font-semibold text-white">${coin.name}</p>
+                                            <p class="text-xs text-gray-400">${coin.symbol.toUpperCase()}</p>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                             newsHtml = `<p class="text-center text-gray-400">No news available.</p>`;
+                        }
+                        newsContainer.innerHTML = newsHtml;
+                    } catch (error) {
+                        console.error("Failed to fetch news:", error);
+                        newsContainer.innerHTML = `<p class="text-center text-red-500">Failed to load news.</p>`;
+                    }
+                };
+
+                // Function to fetch and render top gainers/losers
+                const fetchAndRenderGainersLosers = async (type = 'gainers') => {
+                    gainersLosersList.innerHTML = `<p class="text-center text-gray-400 py-4">Loading data...</p>`;
+                    try {
+                        const marketResponse = await fetch(`${CONFIG.COINGECKO_BASE}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=200&page=1&price_change_percentage=24h`);
+                        if (!marketResponse.ok) throw new Error('Failed to fetch market data for gainers/losers');
+                        let marketData = await marketResponse.json();
+
+                        const topGainers = marketData.filter(c => c.price_change_percentage_24h > 0).sort((a, b) => b.price_change_percentage_24h - a.price_change_percentage_24h).slice(0, 10);
+                        const topLosers = marketData.filter(c => c.price_change_percentage_24h < 0).sort((a, b) => a.price_change_percentage_24h - b.price_change_percentage_24h).slice(0, 10);
+                        
+                        const coinsToDisplay = type === 'gainers' ? topGainers : topLosers;
+
+                        let listHtml = `
+                             <div class="px-4 py-2 flex font-semibold text-gray-400 border-b border-binance-border text-sm">
+                                <span class="w-1/2">Coin</span>
+                                <span class="w-1/4 text-right">Price</span>
+                                <span class="w-1/4 text-right">24h Change</span>
+                            </div>
+                        `;
+
+                        if (coinsToDisplay.length > 0) {
+                            coinsToDisplay.forEach(coin => {
+                                const priceChangeClass = coin.price_change_percentage_24h > 0 ? 'text-green-trade' : 'text-red-trade';
+                                const priceChangeArrow = coin.price_change_percentage_24h > 0 ? '▲' : '▼';
+                                listHtml += `
+                                    <div class="flex items-center p-4 border-b border-binance-border last:border-b-0 text-sm">
+                                        <div class="w-1/2 flex items-center">
+                                            <img src="${coin.image}" onerror="this.onerror=null;this.src='https://placehold.co/60x60/282a32/eaeceb?text=${coin.symbol.toUpperCase()}'" alt="${coin.name}" class="w-6 h-6 mr-2 rounded-full">
+                                            <div>
+                                                <p class="font-semibold">${coin.symbol.toUpperCase()}</p>
+                                                <p class="text-xs text-gray-400">${coin.name}</p>
+                                            </div>
+                                        </div>
+                                        <div class="w-1/4 text-right">
+                                            <p>$${coin.current_price.toFixed(2)}</p>
+                                        </div>
+                                        <div class="w-1/4 text-right ${priceChangeClass} flex items-center justify-end">
+                                            <span>${priceChangeArrow} ${Math.abs(coin.price_change_percentage_24h).toFixed(2)}%</span>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            listHtml += `<p class="text-center text-gray-400 py-4">No data available.</p>`;
+                        }
+                        gainersLosersList.innerHTML = listHtml;
+
+                    } catch (error) {
+                        console.error("Failed to fetch gainers/losers:", error);
+                        gainersLosersList.innerHTML = `<p class="text-center text-red-500 py-4">Failed to load data.</p>`;
+                    }
+                };
+
+                // Initial load
+                fetchAndRenderNews();
+                fetchAndRenderGainersLosers('gainers');
+
+                // Button event listeners
+                showGainersBtn.addEventListener('click', () => {
+                    fetchAndRenderGainersLosers('gainers');
+                    showGainersBtn.classList.add('bg-green-trade', 'text-white');
+                    showGainersBtn.classList.remove('bg-gray-600', 'text-gray-200');
+                    showLosersBtn.classList.remove('bg-red-trade', 'text-white');
+                    showLosersBtn.classList.add('bg-gray-600', 'text-gray-200');
+                });
+                showLosersBtn.addEventListener('click', () => {
+                    fetchAndRenderGainersLosers('losers');
+                    showLosersBtn.classList.add('bg-red-trade', 'text-white');
+                    showLosersBtn.classList.remove('bg-gray-600', 'text-gray-200');
+                    showGainersBtn.classList.remove('bg-green-trade', 'text-white');
+                    showGainersBtn.classList.add('bg-gray-600', 'text-gray-200');
+                });
+                
+                // Search bar functionality (simulated filtering)
+                marketSearch.addEventListener('input', (e) => {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const listItems = gainersLosersList.querySelectorAll('.flex.items-center.p-4');
+                    listItems.forEach(item => {
+                        const coinName = item.querySelector('.font-semibold').textContent.toLowerCase();
+                        if (coinName.includes(searchTerm)) {
+                            item.style.display = 'flex';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                });
+            };
+
+            const fetchAndRenderPortfolio = async () => {
+                const portfolioList = document.getElementById('portfolioList');
+                const totalBalanceEl = document.getElementById('totalBalanceAssets');
+                
+                if (!portfolioList || !totalBalanceEl) {
+                    console.error("Assets page elements not found.");
+                    return;
+                }
+
+                portfolioList.innerHTML = `<p class="text-center text-gray-400 py-4">Loading portfolio...</p>`;
+                totalBalanceEl.innerText = '$...';
+
+                try {
+                    // Simulated user holdings with some popular coin IDs
+                    const holdingCoins = ['bitcoin', 'ethereum', 'binancecoin', 'solana', 'dogecoin', 'cardano'];
+                    const idsString = holdingCoins.join(',');
+
+                    // Fetch market data for the user's holdings
+                    const marketResponse = await fetch(`${CONFIG.COINGECKO_BASE}/coins/markets?vs_currency=usd&ids=${idsString}`);
+                    if (!marketResponse.ok) throw new Error('Failed to fetch market data for portfolio');
+                    const marketData = await marketResponse.json();
+
+                    // Map the fetched data to a dictionary for easier lookup
+                    const fetchedCoins = marketData.reduce((acc, coin) => {
+                        acc[coin.id] = coin;
+                        return acc;
+                    }, {});
+
+                    // Simulated user holdings with some amount
+                    const holdings = {
+    bitcoin: 0.0,
+    ethereum: 0.0,
+    binancecoin: 0.06065022, // ~BNB
+    solana: 0.0,
+    dogecoin: 0.0,
+    cardano: 0.0,
+    tether: 6878.78,  // ~USDT 
+                 
+   };
+              let totalValue = 0;
+                    let portfolioHtml = '';
+
+                    holdingCoins.forEach(coinId => {
+                        const coinData = fetchedCoins[coinId];
+                        if (coinData) {
+                            const amount = holdings[coinId];
+                            const value = coinData.current_price * amount;
+                            totalValue += value;
+
+                            portfolioHtml += `
+                                <div class="binance-card rounded-lg p-4 asset-list-item flex justify-between items-center">
+                                    <div class="flex items-center space-x-2">
+                                        <img src="${coinData.image}" onerror="this.onerror=null;this.src='https://placehold.co/60x60/282a32/eaeceb?text=${coinData.symbol.toUpperCase()}'" alt="${coinData.name}" class="w-8 h-8 rounded-full">
+                                        <div>
+                                            <p class="font-semibold">${coinData.name}</p>
+                                            <p class="text-xs text-gray-400">${coinData.symbol.toUpperCase()}</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p>$${value.toFixed(2)}</p>
+                                        <p class="text-xs text-gray-400">${amount.toFixed(2)} ${coinData.symbol.toUpperCase()}</p>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                    if (Object.keys(holdings).length === 0) {
+                        portfolioHtml = `<p class="text-center text-gray-400 py-4">Your portfolio is empty.</p>`;
+                    }
+
+                    totalBalanceEl.innerText = `$${totalValue.toFixed(2)}`;
+                    portfolioList.innerHTML = portfolioHtml;
+
+                } catch (error) {
+                    console.error("Error fetching portfolio data:", error);
+                    portfolioList.innerHTML = `<p class="text-center text-red-500 py-4">Failed to load portfolio data. Please try again later.</p>`;
+                    totalBalanceEl.innerText = '$Error';
+                }
+            };
+            
+            const renderDepositPage = async () => {
+                const depositCoinList = document.getElementById('depositCoinList');
+                if (!depositCoinList) return;
+
+                depositCoinList.innerHTML = `<p class="text-center text-gray-400 py-4">Loading coins...</p>`;
+                
+                if (allCoins.length === 0) {
+                    try {
+                        const response = await fetch(`${CONFIG.COINGECKO_BASE}/coins/markets?vs_currency=usd&per_page=250&page=1`);
+                        if (!response.ok) throw new Error('Failed to fetch coins');
+                        allCoins = await response.json();
+                    } catch (error) {
+                        console.error("Failed to fetch all coins:", error);
+                        depositCoinList.innerHTML = `<p class="text-center text-red-500 py-4">Failed to load coins. Please try again later.</p>`;
+                        return;
+                    }
+                }
+                
+                renderCoinList(allCoins);
+
+                const depositSearch = document.getElementById('depositSearch');
+                depositSearch.addEventListener('input', (e) => {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const filteredCoins = allCoins.filter(coin => 
+                        coin.name.toLowerCase().includes(searchTerm) || coin.symbol.toLowerCase().includes(searchTerm)
+                    );
+                    renderCoinList(filteredCoins);
+                });
+            }
+
+            const renderCoinList = (coins) => {
+                const depositCoinList = document.getElementById('depositCoinList');
+                if (!depositCoinList) return;
+                
+                let coinHtml = '';
+                if (coins.length > 0) {
+                    coins.sort((a,b) => a.symbol.localeCompare(b.symbol));
+                    coins.forEach(coin => {
+                        coinHtml += `
+                            <div class="deposit-coin-item binance-card rounded-lg p-3 flex items-center space-x-3 cursor-pointer" data-symbol="${coin.symbol.toUpperCase()}" data-name="${coin.name}" data-id="${coin.id}">
+                                <img src="${coin.image}" onerror="this.onerror=null;this.src='https://placehold.co/60x60/282a32/eaeceb?text=${coin.symbol.toUpperCase()}'" alt="${coin.name}" class="w-8 h-8 rounded-full">
+                                <div>
+                                    <p class="font-semibold">${coin.symbol.toUpperCase()}</p>
+                                    <p class="text-xs text-gray-400">${coin.name}</p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    coinHtml = `<p class="text-center text-gray-400 py-4">No coins found.</p>`;
+                }
+                depositCoinList.innerHTML = coinHtml;
+
+                document.querySelectorAll('.deposit-coin-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        const symbol = item.dataset.symbol;
+                        const name = item.dataset.name;
+                        renderNetworkSelection(symbol, name);
+                    });
+                });
+            }
+
+            const renderNetworkSelection = (coinSymbol, coinName) => {
+                const depositPage = document.getElementById('depositPage');
+                if (!depositPage) return;
+
+                const networks = DEPOSIT_NETWORKS[coinSymbol.toUpperCase()] || ['Other'];
+                let networksHtml = `
+                    <header class="flex items-center justify-between mb-4 page-header -mx-4 px-4 py-2">
+                        <h2 class="text-2xl font-bold">Select Network</h2>
+                    </header>
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-400 mb-2">Selected Coin:</p>
+                        <div class="binance-card rounded-lg p-3 flex items-center space-x-3">
+                            <img src="https://placehold.co/60x60/282a32/eaeceb?text=${coinSymbol}" alt="${coinName}" class="w-8 h-8 rounded-full">
+                            <div>
+                                <p class="font-semibold">${coinSymbol}</p>
+                                <p class="text-xs text-gray-400">${coinName}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <p class="text-sm text-gray-400 mb-2">Select a deposit network below:</p>
+                `;
+
+                networks.forEach(network => {
+                    networksHtml += `
+                        <button class="network-select-btn w-full binance-card rounded-lg p-4 text-left font-semibold" data-network="${network}" data-coin-symbol="${coinSymbol}" data-coin-name="${coinName}">
+                            ${network}
+                        </button>
+                    `;
+                });
+
+                networksHtml += `</div>`;
+                depositPage.innerHTML = networksHtml;
+                
+                document.querySelectorAll('.network-select-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const network = btn.dataset.network;
+                        const symbol = btn.dataset.coinSymbol;
+                        const name = btn.dataset.coinName;
+                        renderDepositAddressPage(symbol, name, network);
+                    });
+                });
+            };
+
+            const renderDepositAddressPage = (coinSymbol, coinName, network) => {
+                const address = DEPOSIT[network.toUpperCase()];
+                const depositAddressPage = document.getElementById('depositAddressPage');
+                
+                if (!address || !depositAddressPage) {
+                    showMessage(`No deposit address found for ${coinSymbol} on network ${network}.`);
+                    return;
+                }
+                
+                showPage('depositAddressPage');
+                
+                const depositCoinTitleEl = document.getElementById('depositCoinTitle');
+                const depositNetworkDisplayEl = document.getElementById('depositNetworkDisplay');
+                const depositAddressEl = document.getElementById('depositAddress');
+                const qrcodeContainer = document.getElementById('qrcode');
+                const disclaimerCoinEl = document.getElementById('disclaimerCoin');
+                const copyBtn = document.getElementById('copyAddressBtn');
+
+                if (depositCoinTitleEl) depositCoinTitleEl.textContent = coinSymbol.toUpperCase();
+                if (depositNetworkDisplayEl) depositNetworkDisplayEl.textContent = network.toUpperCase();
+                if (depositAddressEl) depositAddressEl.textContent = address;
+                if (disclaimerCoinEl) disclaimerCoinEl.textContent = coinSymbol.toUpperCase();
+
+                if (qrcodeContainer) {
+                    qrcodeContainer.innerHTML = '';
+                    new QRCode(qrcodeContainer, {
+                        text: address,
+                        width: 200,
+                        height: 200,
+                        colorDark : "#eaeceb",
+                        colorLight : "#282a32",
+                        correctLevel : QRCode.CorrectLevel.H
+                    });
+                }
+                
+                if (copyBtn) {
+                    copyBtn.onclick = () => {
+                        copyToClipboard(address);
+                    };
+                }
+            };
+
+            const copyToClipboard = (text) => {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showMessage('Address copied to clipboard!');
+                    }).catch(err => {
+                        console.error('Could not copy text: ', err);
+                        showMessage('Failed to copy. Please try again or copy manually.');
+                    });
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.style.position = 'fixed';
+                    textarea.style.top = 0;
+                    textarea.style.left = 0;
+                    textarea.style.opacity = 0;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        showMessage('Address copied to clipboard!');
+                    } catch (err) {
+                        console.error('Fallback: Could not copy text:', err);
+                        showMessage('Failed to copy. Please try again or copy manually.');
+                    }
+                    document.body.removeChild(textarea);
+                }
+            };
+
+            const renderSendPage = () => {
+                const sendPage = document.getElementById('sendPage');
+                if (sendPage) {
+                    sendPage.innerHTML = `
+                        <header class="flex items-center justify-between mb-4 page-header -mx-4 px-4 py-2">
+                            <h2 class="text-2xl font-bold">Send Crypto</h2>
+                        </header>
+                        <div class="binance-card rounded-lg p-4">
+                            <h3 class="font-bold text-xl mb-4">Send to a Friend</h3>
+                            <p class="text-sm text-gray-400 mb-2">This is a simulated page for sending assets.</p>
+                            <div class="mb-4">
+                                <label for="recipientAddress" class="block text-sm text-gray-400 mb-1">Recipient Address</label>
+                                <input type="text" id="recipientAddress" placeholder="Enter recipient address" class="w-full p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none">
+                            </div>
+                            <div class="mb-4">
+                                <label for="sendAmount" class="block text-sm text-gray-400 mb-1">Amount</label>
+                                <input type="number" id="sendAmount" placeholder="0.0" class="w-full p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none">
+                            </div>
+                            <button id="sendSubmitBtn" class="w-full py-3 rounded-lg bg-binance-primary text-black font-bold">Send</button>
+                        </div>
+                    `;
+                    document.getElementById('sendSubmitBtn').addEventListener('click', () => {
+                        showMessage("Send functionality is not implemented yet.");
+                    });
+                }
+            };
+            
+            const renderExplorePage = async () => {
+                const exploreCoinList = document.getElementById('exploreCoinList');
+                if (!exploreCoinList) return;
+
+                exploreCoinList.innerHTML = `<p class="text-center text-gray-400 py-4">Loading top coins...</p>`;
+                try {
+                    const response = await fetch(`${CONFIG.COINGECKO_BASE}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1`);
+                    if (!response.ok) throw new Error('Failed to fetch coins');
+                    const topCoins = await response.json();
+                    
+                    let coinHtml = '';
+                    topCoins.forEach(coin => {
+                        const priceChangeClass = coin.price_change_percentage_24h_in_currency > 0 ? 'text-green-trade' : 'text-red-trade';
+                        const priceChangeArrow = coin.price_change_percentage_24h_in_currency > 0 ? '▲' : '▼';
+                        const priceChangeValue = coin.price_change_percentage_24h_in_currency !== null ? Math.abs(coin.price_change_percentage_24h_in_currency).toFixed(2) + '%' : 'N/A';
+                            
+                        coinHtml += `
+                            <div class="binance-card rounded-lg p-4 flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <img src="${coin.image}" onerror="this.onerror=null;this.src='https://placehold.co/60x60/282a32/eaeceb?text=${coin.symbol.toUpperCase()}'" alt="${coin.name}" class="w-8 h-8 rounded-full">
+                                    <div>
+                                        <p class="font-semibold">${coin.symbol.toUpperCase()}</p>
+                                        <p class="text-xs text-gray-400">${coin.name}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-semibold">$${coin.current_price.toFixed(2)}</p>
+                                    <p class="text-xs ${priceChangeClass}">${priceChangeArrow} ${priceChangeValue}</p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    exploreCoinList.innerHTML = coinHtml;
+                } catch (error) {
+                    console.error("Failed to fetch explore data:", error);
+                    exploreCoinList.innerHTML = `<p class="text-center text-red-500 py-4">Failed to load data. Please try again later.</p>`;
+                }
+            };
+
+            const setupMainAppEventListeners = () => {
+                const navButtons = document.querySelectorAll('.nav-item');
+                navButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        navButtons.forEach(btn => btn.classList.remove('active'));
+                        button.classList.add('active');
+                        const pageId = button.id.replace('nav', '').toLowerCase() + 'Page';
+                        showPage(pageId);
+                    });
+                });
+                
+                // Homepage quick action buttons
+                document.getElementById('homeDepositBtn').addEventListener('click', () => showPage('depositPage'));
+                document.getElementById('homeWithdrawBtn').addEventListener('click', () => showMessage("Withdraw functionality not yet implemented."));
+                document.getElementById('sendBtn').addEventListener('click', () => showPage('sendPage'));
+                document.getElementById('receiveBtn').addEventListener('click', () => showPage('depositPage'));
+                document.getElementById('buyCryptoBtn').addEventListener('click', () => showMessage("Buy Crypto functionality is not yet implemented."));
+                document.getElementById('referralBtn').addEventListener('click', () => showMessage("Referral functionality is not yet implemented."));
+                document.getElementById('savingsBtn').addEventListener('click', () => showMessage("Savings functionality is not yet implemented."));
+                document.getElementById('stakingBtn').addEventListener('click', () => showMessage("Staking functionality is not yet implemented."));
+                document.getElementById('launchpadBtn').addEventListener('click', () => showMessage("Launchpad functionality is not yet implemented."));
+                document.getElementById('moreBtn').addEventListener('click', () => showMessage("More functionality is not yet implemented."));
+                
+                // Header buttons
+                document.getElementById('searchAppBtn').addEventListener('click', () => { showMessage("Search functionality not yet implemented."); });
+                document.getElementById('notificationsBtn').addEventListener('click', () => showPage('notificationsPage'));
+                document.getElementById('settingsBtn').addEventListener('click', () => showPage('settingsPage'));
+                document.getElementById('backBtn').addEventListener('click', goBack);
+                
+                // Assets buttons
+                document.getElementById('assetsDepositBtn')?.addEventListener('click', () => showPage('depositPage'));
+                document.getElementById('assetsWithdrawBtn')?.addEventListener('click', () => showMessage("Withdraw functionality is not yet implemented."));
+
+                // Formspree logic for contact form
+                const contactForm = document.getElementById('contactForm');
+                if (contactForm) {
+                    contactForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const formData = new FormData(e.target);
+                        const data = Object.fromEntries(formData.entries());
+                        try {
+                            const response = await fetch(CONFIG.FORM_SPREE_ENDPOINT, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify(data)
+                            });
+                            if (response.ok) {
+                                showMessage("Message sent successfully! We'll be in touch.");
+                                contactForm.reset();
+                            } else {
+                                throw new Error('Form submission failed.');
+                            }
+                        } catch (error) {
+                            console.error("Form submission error:", error);
+                            showMessage("Failed to send message. Please try again later.");
+                        }
+                    });
+                }
+                
+                // Initial fetch and render for homepage
+                fetchAndRenderMainAppHome();
+            };
+
+            // Additional button logic for the landing page
+            searchLandingBtn.addEventListener('click', () => showMessage("Search functionality is not yet implemented."));
+            exploreMoreBtn.addEventListener('click', () => showPage('explorePage'));
+            
+        
+    </script>
+</body>
+</html>
